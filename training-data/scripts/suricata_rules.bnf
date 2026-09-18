@@ -1,0 +1,830 @@
+; Suricata 8.0.3 Rules BNF Grammar
+; Based on official Suricata documentation
+; https://docs.suricata.io/en/suricata-8.0.3/
+; created by Claude Opus with prompt:
+; create BNF grammar for Suricata 8.0.3, save result into a file suricata_rules_empty_context_0.bnf
+; update BNF grammar for Suricata 8.0.3 in file suricata_rules_empty_context_3.bnf , with content from https://docs.suricata.io/en/suricata-8.0.3/rules/dhcp-keywords.html,
+; then with content from
+; https://docs.suricata.io/en/suricata-8.0.3/rules/ftp-keywords.html,
+; then with content from https://docs.suricata.io/en/suricata-8.0.3/rules/snmp-keywords.html,
+; then with content from https://docs.suricata.io/en/suricata-8.0.3/rules/base64-keywords.html,
+; then with content from https://docs.suricata.io/en/suricata-8.0.3/rules/http2-keywords.html,
+; then with content from https://docs.suricata.io/en/suricata-8.0.3/rules/smtp-keywords.html,
+; then with content from https://docs.suricata.io/en/suricata-8.0.3/rules/websocket-keywords.html,
+; then with content from 8.45. IP Reputation Keyword — Suricata 8.0.3 documentation.
+; Save result to suricata_rules_empty_context_4.bnf
+
+; =============================================================================
+; Top-Level Rule Structure
+; =============================================================================
+
+<rule>                      ::= <action> <whitespace> <header> <whitespace> "(" <rule-options> ")"
+
+; =============================================================================
+; Actions
+; =============================================================================
+
+<action>                    ::= "alert" | "pass" | "drop" | "reject" | "rejectsrc" | "rejectdst" | "rejectboth"
+
+; =============================================================================
+; Header (Protocol, Addresses, Ports, Direction)
+; =============================================================================
+
+<header>                    ::= <protocol> <whitespace> <source-address> <whitespace> <source-port> <whitespace> <direction> <whitespace> <dest-address> <whitespace> <dest-port>
+
+; Protocol definitions
+<protocol>                  ::= <network-protocol> | <application-protocol> | <explicit-hook>
+<network-protocol>          ::= "ip" | "tcp" | "udp" | "icmp" | "tcp-pkt" | "tcp-stream" | "pkthdr"
+<application-protocol>      ::= "http" | "http1" | "http2" | "ftp" | "ftp-data" | "tls" | "ssl" | "smb" | "dns"
+                              | "dcerpc" | "dhcp" | "ssh" | "smtp" | "imap" | "pop3" | "modbus"
+                              | "dnp3" | "enip" | "nfs" | "ike" | "krb5" | "bittorrent-dht"
+                              | "ntp" | "rfb" | "rdp" | "snmp" | "tftp" | "sip" | "websocket"
+                              | "quic" | "mqtt" | "http_any" | "pgsql" | "ja4" | "mdns"
+<explicit-hook>             ::= <protocol-name> ":" <hook-name>
+<protocol-name>             ::= <identifier>
+<hook-name>                 ::= <identifier>
+
+; Direction
+<direction>                 ::= "->" | "=>" | "<>"
+
+; =============================================================================
+; Addresses
+; =============================================================================
+
+<source-address>            ::= <address-spec>
+<dest-address>              ::= <address-spec>
+<address-spec>              ::= <address> | <address-group> | <negated-address> | <variable>
+<address-group>             ::= "[" <address-list> "]"
+<address-list>              ::= <address-spec> | <address-spec> "," <address-list>
+<negated-address>           ::= "!" <address-spec>
+<address>                   ::= <ipv4-address> | <ipv4-cidr> | <ipv6-address> | <ipv6-cidr> | "any"
+<ipv4-address>              ::= <octet> "." <octet> "." <octet> "." <octet>
+<ipv4-cidr>                 ::= <ipv4-address> "/" <cidr-prefix>
+<ipv6-address>              ::= <hex-group> ":" <hex-group> ":" <hex-group> ":" <hex-group> ":" <hex-group> ":" <hex-group> ":" <hex-group> ":" <hex-group>
+                              | <ipv6-compressed>
+<ipv6-compressed>           ::= <hex-groups> "::" <hex-groups> | "::" <hex-groups> | <hex-groups> "::" | "::"
+<hex-groups>                ::= <hex-group> | <hex-group> ":" <hex-groups>
+<hex-group>                 ::= <hex-digit> | <hex-digit> <hex-digit> | <hex-digit> <hex-digit> <hex-digit> | <hex-digit> <hex-digit> <hex-digit> <hex-digit>
+<ipv6-cidr>                 ::= <ipv6-address> "/" <cidr-prefix>
+<cidr-prefix>               ::= <digit> | <digit> <digit> | <digit> <digit> <digit>
+<octet>                     ::= <digit> | <digit> <digit> | <digit> <digit> <digit>
+<variable>                  ::= "$" <identifier>
+
+; =============================================================================
+; Ports
+; =============================================================================
+
+<source-port>               ::= <port-spec>
+<dest-port>                 ::= <port-spec>
+<port-spec>                 ::= <port> | <port-group> | <negated-port> | <port-range> | <variable> | "any"
+<port-group>                ::= "[" <port-list> "]"
+<port-list>                 ::= <port-spec> | <port-spec> "," <port-list>
+<negated-port>              ::= "!" <port-spec>
+<port-range>                ::= <port> ":" <port> | <port> ":" | ":" <port>
+<port>                      ::= <port-number>
+<port-number>               ::= <digit> | <digit>+
+
+; =============================================================================
+; Rule Options
+; =============================================================================
+
+<rule-options>              ::= <rule-option> | <rule-option> <whitespace>? ";" <whitespace>? <rule-options> | <whitespace>?
+<rule-option>               ::= <meta-keyword> | <payload-keyword> | <flow-keyword> | <header-keyword>
+                              | <threshold-keyword> | <http-keyword> | <http2-keyword> | <file-keyword>
+                              | <tls-keyword> | <dns-keyword> | <mdns-keyword> | <ssh-keyword>
+                              | <ftp-keyword> | <smtp-keyword> | <dhcp-keyword> | <snmp-keyword>
+                              | <websocket-keyword> | <iprep-keyword> | <prefilter-keyword>
+                              | <frame-keyword> | <other-keyword>
+
+; =============================================================================
+; Meta Keywords
+; =============================================================================
+
+<meta-keyword>              ::= <msg-keyword> | <sid-keyword> | <rev-keyword> | <gid-keyword>
+                              | <classtype-keyword> | <reference-keyword> | <priority-keyword>
+                              | <metadata-keyword> | <target-keyword> | <requires-keyword>
+
+<msg-keyword>               ::= "msg" <whitespace>? ":" <whitespace>? <quoted-string>
+<sid-keyword>               ::= "sid" <whitespace>? ":" <whitespace>? <number>
+<rev-keyword>               ::= "rev" <whitespace>? ":" <whitespace>? <number>
+<gid-keyword>               ::= "gid" <whitespace>? ":" <whitespace>? <number>
+<classtype-keyword>         ::= "classtype" <whitespace>? ":" <whitespace>? <classtype-name>
+<classtype-name>            ::= <identifier> | <identifier> "-" <classtype-name>
+<reference-keyword>         ::= "reference" <whitespace>? ":" <whitespace>? <reference-type> "," <reference-value>
+<reference-type>            ::= "cve" | "url" | "bugtraq" | "nessus" | "arachnids" | "mcafee" | "osvdb" | "msb" | "md5" | "sha256" | "sha1" | <identifier>
+<reference-value>           ::= <unquoted-string>
+<priority-keyword>          ::= "priority" <whitespace>? ":" <whitespace>? <number>
+<metadata-keyword>          ::= "metadata" <whitespace>? ":" <whitespace>? <metadata-list>
+<metadata-list>             ::= <metadata-item> | <metadata-item> "," <whitespace>? <metadata-list>
+<metadata-item>             ::= <identifier> <whitespace> <metadata-value>
+<metadata-value>            ::= <identifier> | <unquoted-string>
+<target-keyword>            ::= "target" <whitespace>? ":" <whitespace>? <target-value>
+<target-value>              ::= "src_ip" | "dest_ip"
+<requires-keyword>          ::= "requires" <whitespace>? ":" <whitespace>? <requires-spec>
+<requires-spec>             ::= <requires-item> | <requires-item> "," <whitespace>? <requires-spec>
+<requires-item>             ::= "feature" <whitespace> <identifier> | "keyword" <whitespace> <identifier> | "version" <whitespace> <version-expr>
+<version-expr>              ::= <comparison-op> <version-number>
+<version-number>            ::= <number> "." <number> "." <number> | <number> "." <number>
+
+; =============================================================================
+; Prefilter Keywords
+; =============================================================================
+; Keywords that optimize rule matching performance by controlling the Multi
+; Pattern Matcher (MPM) and enabling prefilter engines for non-MPM keywords.
+
+<prefilter-keyword>         ::= <fast-pattern-keyword> | <prefilter-kw>
+
+; fast_pattern - Specifies which content Suricata should use for the MPM.
+; Normally Suricata selects the "strongest" content automatically, but this
+; keyword allows manual override to use a different content for MPM matching.
+;
+; Forms:
+;   fast_pattern;           - Use the preceding content for MPM
+;   fast_pattern:only;      - Use only MPM match (skip further content checks)
+;   fast_pattern:<offset>,<length>;  - Use portion of content for MPM ("chop" mode)
+;
+; Example: content:"User-Agent|3a 20|"; fast_pattern:12,5;
+<fast-pattern-keyword>      ::= "fast_pattern" | "fast_pattern" <whitespace>? ":" <whitespace>? <fast-pattern-opts>
+<fast-pattern-opts>         ::= <fast-pattern-only> | <fast-pattern-chop>
+<fast-pattern-only>         ::= "only"
+<fast-pattern-chop>         ::= <number> "," <number>
+
+; prefilter - Enables prefilter engines for non-MPM keywords in specific rules.
+; This allows certain tests (like TTL, IP protocol, etc.) to be used in
+; prefiltering to reduce the number of rules that need full evaluation.
+;
+; Example: alert ip any any -> any any (ttl:123; prefilter; content:"a"; sid:1;)
+;
+; The prefilter keyword is a standalone keyword with no arguments.
+; Configuration of which prefilter engines are available is done in the
+; Suricata YAML configuration file under the "prefilter" section.
+<prefilter-kw>              ::= "prefilter"
+
+; =============================================================================
+; Payload Keywords
+; =============================================================================
+
+<payload-keyword>           ::= <content-keyword> | <content-modifier> | <pcre-keyword> | <byte-keyword>
+                              | <dsize-keyword> | <isdataat-keyword> | <rpc-keyword> | <replace-keyword>
+                              | <bsize-keyword> | <absent-keyword> | <entropy-keyword> | <base64-keyword>
+
+<content-keyword>           ::= "content" <whitespace>? ":" <whitespace>? <content-value>
+<content-value>             ::= <quoted-string> | <negated-content>
+<negated-content>           ::= "!" <quoted-string>
+
+<content-modifier>          ::= <nocase-keyword> | <depth-keyword> | <offset-keyword> | <distance-keyword>
+                              | <within-keyword> | <startswith-keyword> | <endswith-keyword> | <rawbytes-keyword>
+
+<nocase-keyword>            ::= "nocase"
+<depth-keyword>             ::= "depth" <whitespace>? ":" <whitespace>? <number>
+<offset-keyword>            ::= "offset" <whitespace>? ":" <whitespace>? <number>
+<distance-keyword>          ::= "distance" <whitespace>? ":" <whitespace>? <signed-number>
+<within-keyword>            ::= "within" <whitespace>? ":" <whitespace>? <number>
+<startswith-keyword>        ::= "startswith"
+<endswith-keyword>          ::= "endswith"
+<rawbytes-keyword>          ::= "rawbytes"
+
+<pcre-keyword>              ::= "pcre" <whitespace>? ":" <whitespace>? <quoted-regex>
+<quoted-regex>              ::= "\"" "/" <regex-pattern> "/" <regex-modifiers>? "\""
+<regex-pattern>             ::= <regex-char>+
+<regex-char>                ::= <printable-char>
+<regex-modifiers>           ::= <regex-modifier>+
+<regex-modifier>            ::= "i" | "s" | "m" | "x" | "A" | "E" | "G" | "R" | "U" | "B" | "O" | "I" | "D" | "K" | "S" | "P" | "H" | "M" | "C" | "W"
+
+<byte-keyword>              ::= <byte-test-keyword> | <byte-jump-keyword> | <byte-extract-keyword> | <byte-math-keyword>
+<byte-test-keyword>         ::= "byte_test" <whitespace>? ":" <whitespace>? <byte-test-args>
+<byte-test-args>            ::= <number> "," <byte-test-op> "," <byte-test-value> "," <number> <byte-test-opts>?
+<byte-test-op>              ::= "=" | "!=" | "<" | ">" | "<=" | ">=" | "&" | "^"
+<byte-test-value>           ::= <number> | <variable-name>
+<byte-test-opts>            ::= "," <byte-test-opt> | "," <byte-test-opt> <byte-test-opts>
+<byte-test-opt>             ::= "relative" | "big" | "little" | "dce" | "string" | "hex" | "dec" | "oct" | "bitmask" <whitespace> <hex-value>
+
+<byte-jump-keyword>         ::= "byte_jump" <whitespace>? ":" <whitespace>? <byte-jump-args>
+<byte-jump-args>            ::= <number> "," <number> <byte-jump-opts>?
+<byte-jump-opts>            ::= "," <byte-jump-opt> | "," <byte-jump-opt> <byte-jump-opts>
+<byte-jump-opt>             ::= "relative" | "big" | "little" | "dce" | "string" | "hex" | "dec" | "oct" | "align" | "from_beginning" | "from_end" | "post_offset" <whitespace> <signed-number> | "multiplier" <whitespace> <number> | "bitmask" <whitespace> <hex-value>
+
+<byte-extract-keyword>      ::= "byte_extract" <whitespace>? ":" <whitespace>? <byte-extract-args>
+<byte-extract-args>         ::= <number> "," <number> "," <variable-name> <byte-extract-opts>?
+<byte-extract-opts>         ::= "," <byte-extract-opt> | "," <byte-extract-opt> <byte-extract-opts>
+<byte-extract-opt>          ::= "relative" | "big" | "little" | "dce" | "string" | "hex" | "dec" | "oct" | "align" | "multiplier" <whitespace> <number> | "bitmask" <whitespace> <hex-value>
+
+<byte-math-keyword>         ::= "byte_math" <whitespace>? ":" <whitespace>? <byte-math-args>
+<byte-math-args>            ::= "bytes" <whitespace> <number> "," <whitespace>? "offset" <whitespace> <number> "," <whitespace>? "oper" <whitespace> <math-op> "," <whitespace>? "rvalue" <whitespace> <math-rvalue> "," <whitespace>? "result" <whitespace> <variable-name> <byte-math-opts>?
+<math-op>                   ::= "+" | "-" | "*" | "/" | "<<" | ">>"
+<math-rvalue>               ::= <number> | <variable-name>
+<byte-math-opts>            ::= "," <byte-math-opt> | "," <byte-math-opt> <byte-math-opts>
+<byte-math-opt>             ::= "relative" | "endian" <whitespace> <endian-type> | "string" <whitespace> <string-type> | "bitmask" <whitespace> <hex-value>
+<endian-type>               ::= "big" | "little" | "dce"
+<string-type>               ::= "hex" | "dec" | "oct"
+
+<dsize-keyword>             ::= "dsize" <whitespace>? ":" <whitespace>? <dsize-spec>
+<dsize-spec>                ::= <comparison-op>? <number> | <number> "<>" <number>
+<bsize-keyword>             ::= "bsize" <whitespace>? ":" <whitespace>? <bsize-spec>
+<bsize-spec>                ::= <comparison-op>? <number> | <number> "<>" <number>
+<isdataat-keyword>          ::= "isdataat" <whitespace>? ":" <whitespace>? <isdataat-spec>
+<isdataat-spec>             ::= "!"? <number> <isdataat-opts>?
+<isdataat-opts>             ::= "," "relative" | "," "rawbytes"
+<absent-keyword>            ::= "absent"
+<entropy-keyword>           ::= "entropy" <whitespace>? ":" <whitespace>? <entropy-spec>
+<entropy-spec>              ::= <comparison-op>? <float-number>
+<rpc-keyword>               ::= "rpc" <whitespace>? ":" <whitespace>? <rpc-spec>
+<rpc-spec>                  ::= <number> "," <number-or-wildcard> "," <number-or-wildcard>
+<number-or-wildcard>        ::= <number> | "*"
+<replace-keyword>           ::= "replace" <whitespace>? ":" <whitespace>? <quoted-string>
+
+; -----------------------------------------------------------------------------
+; Base64 Keywords
+; -----------------------------------------------------------------------------
+; Keywords for decoding and matching Base64 encoded data.
+; Both base64_decode and base64_data are required for an alert.
+;
+; base64_decode - Decodes Base64 data from a buffer, making it available
+; for base64_data. Follows RFC 4648 by default.
+;
+; Options:
+;   bytes <value>  - How many bytes to decode (max 64KiB)
+;   offset <value> - How many bytes to skip before decoding
+;   relative       - Start decoding relative to previous content match
+;
+; Example: base64_decode:bytes 8, offset 1, relative;
+;
+; base64_data - Sticky buffer for matching decoded Base64 data.
+; Cannot be used with fast_pattern.
+;
+; Example: base64_data; content:"test";
+
+<base64-keyword>            ::= <base64-decode-keyword> | <base64-data-keyword>
+<base64-decode-keyword>     ::= "base64_decode" <whitespace>? ":" <whitespace>? <base64-decode-opts>?
+<base64-decode-opts>        ::= <base64-decode-opt> | <base64-decode-opt> "," <whitespace>? <base64-decode-opts>
+<base64-decode-opt>         ::= "bytes" <whitespace> <number> | "offset" <whitespace> <number> | "relative"
+<base64-data-keyword>       ::= "base64_data"
+
+; =============================================================================
+; Flow Keywords
+; =============================================================================
+
+<flow-keyword>              ::= <flow-kw> | <flowbits-keyword> | <flowint-keyword> | <stream-size-keyword>
+                              | <noalert-keyword>
+
+<flow-kw>                   ::= "flow" <whitespace>? ":" <whitespace>? <flow-options>
+<flow-options>              ::= <flow-option> | <flow-option> "," <whitespace>? <flow-options>
+<flow-option>               ::= "to_client" | "to_server" | "from_client" | "from_server"
+                              | "established" | "not_established" | "stateless"
+                              | "only_stream" | "no_stream" | "only_frag" | "no_frag"
+
+<flowbits-keyword>          ::= "flowbits" <whitespace>? ":" <whitespace>? <flowbits-cmd>
+<flowbits-cmd>              ::= <flowbits-action> | <flowbits-action> "," <flowbits-name> | <flowbits-action> "," <flowbits-name> "," <flowbits-group>
+<flowbits-action>           ::= "set" | "isset" | "isnotset" | "unset" | "toggle" | "noalert"
+<flowbits-name>             ::= <identifier> | <identifier> "." <flowbits-name>
+<flowbits-group>            ::= <identifier>
+
+<flowint-keyword>           ::= "flowint" <whitespace>? ":" <whitespace>? <flowint-cmd>
+<flowint-cmd>               ::= <variable-name> "," <flowint-action> | <variable-name> "," <flowint-action> "," <number>
+<flowint-action>            ::= "+" | "-" | "=" | ">" | "<" | ">=" | "<=" | "==" | "!=" | "isset" | "isnotset"
+
+<stream-size-keyword>       ::= "stream_size" <whitespace>? ":" <whitespace>? <stream-size-spec>
+<stream-size-spec>          ::= <stream-direction> "," <comparison-op> "," <number>
+<stream-direction>          ::= "server" | "client" | "both" | "either"
+
+<noalert-keyword>           ::= "noalert"
+
+; =============================================================================
+; Header Keywords (TCP, UDP, ICMP, IP)
+; =============================================================================
+
+<header-keyword>            ::= <tcp-keyword> | <udp-keyword> | <icmp-keyword> | <ip-keyword>
+
+; TCP Keywords
+<tcp-keyword>               ::= <tcp-flags-keyword> | <tcp-seq-keyword> | <tcp-ack-keyword>
+                              | <tcp-window-keyword> | <tcp-mss-keyword> | <tcp-wscale-keyword>
+                              | <tcp-hdr-keyword>
+
+<tcp-flags-keyword>         ::= "tcp.flags" <whitespace>? ":" <whitespace>? <tcp-flags-spec>
+                              | "flags" <whitespace>? ":" <whitespace>? <tcp-flags-spec>
+<tcp-flags-spec>            ::= <flags-modifier>? <flags-set> <flags-modifier>? | <flags-modifier>? <flags-set> "," <flags-ignore>
+<flags-set>                 ::= <flag-char>+
+<flags-ignore>              ::= <flag-char>+
+<flags-modifier>            ::= "+" | "*" | "!"
+<flag-char>                 ::= "F" | "S" | "R" | "P" | "A" | "U" | "E" | "C" | "0"
+
+<tcp-seq-keyword>           ::= "seq" <whitespace>? ":" <whitespace>? <number>
+<tcp-ack-keyword>           ::= "ack" <whitespace>? ":" <whitespace>? <number>
+<tcp-window-keyword>        ::= "window" <whitespace>? ":" <whitespace>? <comparison-op>? <number>
+<tcp-mss-keyword>           ::= "tcp.mss" <whitespace>? ":" <whitespace>? <comparison-op>? <number>
+<tcp-wscale-keyword>        ::= "tcp.wscale" <whitespace>? ":" <whitespace>? <comparison-op>? <number>
+<tcp-hdr-keyword>           ::= "tcp.hdr"
+
+; UDP Keywords
+<udp-keyword>               ::= <udp-hdr-keyword>
+<udp-hdr-keyword>           ::= "udp.hdr"
+
+; ICMP Keywords
+<icmp-keyword>              ::= <itype-keyword> | <icode-keyword> | <icmp-id-keyword> | <icmp-seq-keyword>
+                              | <icmpv4-hdr-keyword> | <icmpv6-hdr-keyword> | <icmpv6-mtu-keyword>
+
+<itype-keyword>             ::= "itype" <whitespace>? ":" <whitespace>? <icmp-type-spec>
+<icmp-type-spec>            ::= <comparison-op>? <number> | <number> "<>" <number>
+<icode-keyword>             ::= "icode" <whitespace>? ":" <whitespace>? <icmp-code-spec>
+<icmp-code-spec>            ::= <comparison-op>? <number> | <number> "<>" <number>
+<icmp-id-keyword>           ::= "icmp_id" <whitespace>? ":" <whitespace>? <number>
+<icmp-seq-keyword>          ::= "icmp_seq" <whitespace>? ":" <whitespace>? <number>
+<icmpv4-hdr-keyword>        ::= "icmpv4.hdr"
+<icmpv6-hdr-keyword>        ::= "icmpv6.hdr"
+<icmpv6-mtu-keyword>        ::= "icmpv6.mtu" <whitespace>? ":" <whitespace>? <comparison-op>? <number>
+
+; IP Keywords
+<ip-keyword>                ::= <ttl-keyword> | <ipopts-keyword> | <sameip-keyword> | <ip-proto-keyword>
+                              | <ipid-keyword> | <geoip-keyword> | <fragbits-keyword> | <fragoffset-keyword>
+                              | <tos-keyword> | <ipv4-hdr-keyword> | <ipv6-hdr-keyword>
+
+<ttl-keyword>               ::= "ttl" <whitespace>? ":" <whitespace>? <ttl-spec>
+<ttl-spec>                  ::= <comparison-op>? <number> | <number> "-" <number>
+<ipopts-keyword>            ::= "ipopts" <whitespace>? ":" <whitespace>? <ipopts-value>
+<ipopts-value>              ::= "rr" | "eol" | "nop" | "ts" | "sec" | "esec" | "lsrr" | "ssrr" | "satid" | "any"
+<sameip-keyword>            ::= "sameip"
+<ip-proto-keyword>          ::= "ip_proto" <whitespace>? ":" <whitespace>? <ip-proto-spec>
+<ip-proto-spec>             ::= <comparison-op>? <number> | <protocol-name>
+<ipid-keyword>              ::= "id" <whitespace>? ":" <whitespace>? <number>
+<geoip-keyword>             ::= "geoip" <whitespace>? ":" <whitespace>? <geoip-spec>
+<geoip-spec>                ::= <geoip-direction>? <country-codes>
+<geoip-direction>           ::= "src," | "dst," | "both,"
+<country-codes>             ::= <country-code> | <country-code> "," <country-codes>
+<country-code>              ::= <letter> <letter>
+<fragbits-keyword>          ::= "fragbits" <whitespace>? ":" <whitespace>? <fragbits-spec>
+<fragbits-spec>             ::= <fragbits-modifier>? <fragbit-flags>
+<fragbits-modifier>         ::= "+" | "*" | "!"
+<fragbit-flags>             ::= <fragbit-flag>+
+<fragbit-flag>              ::= "M" | "D" | "R"
+<fragoffset-keyword>        ::= "fragoffset" <whitespace>? ":" <whitespace>? <comparison-op>? <number>
+<tos-keyword>               ::= "tos" <whitespace>? ":" <whitespace>? <comparison-op>? <number>
+<ipv4-hdr-keyword>          ::= "ipv4.hdr"
+<ipv6-hdr-keyword>          ::= "ipv6.hdr"
+
+; =============================================================================
+; Threshold Keywords
+; =============================================================================
+
+<threshold-keyword>         ::= <threshold-kw> | <detection-filter-keyword>
+
+<threshold-kw>              ::= "threshold" <whitespace>? ":" <whitespace>? <threshold-spec>
+<threshold-spec>            ::= "type" <whitespace> <threshold-type> "," <whitespace>? "track" <whitespace> <track-by> "," <whitespace>? "count" <whitespace> <number> "," <whitespace>? "seconds" <whitespace> <number>
+<threshold-type>            ::= "threshold" | "limit" | "both" | "backoff"
+<track-by>                  ::= "by_src" | "by_dst" | "by_rule" | "by_both" | "by_flow"
+
+<detection-filter-keyword>  ::= "detection_filter" <whitespace>? ":" <whitespace>? <detection-filter-spec>
+<detection-filter-spec>     ::= "track" <whitespace> <track-by> "," <whitespace>? "count" <whitespace> <number> "," <whitespace>? "seconds" <whitespace> <number>
+
+; =============================================================================
+; HTTP Keywords
+; =============================================================================
+
+<http-keyword>              ::= <http-sticky-buffer> | <http-content-modifier> | <http-other>
+
+<http-sticky-buffer>        ::= "http.uri" | "http.uri.raw" | "http.host" | "http.host.raw"
+                              | "http.method" | "http.request_line" | "http.request_body"
+                              | "http.response_line" | "http.response_body"
+                              | "http.header" | "http.header.raw" | "http.header_names"
+                              | "http.cookie" | "http.user_agent" | "http.accept"
+                              | "http.accept_enc" | "http.accept_lang" | "http.referer"
+                              | "http.connection" | "http.content_len" | "http.content_type"
+                              | "http.location" | "http.server" | "http.protocol"
+                              | "http.stat_code" | "http.stat_msg" | "http.start"
+                              | "http.request_header" | "http.response_header"
+                              | "file.data" | "file.name"
+
+<http-content-modifier>     ::= "http_uri" | "http_raw_uri" | "http_method" | "http_header"
+                              | "http_raw_header" | "http_cookie" | "http_client_body"
+                              | "http_stat_code" | "http_stat_msg" | "http_user_agent"
+                              | "http_host" | "http_raw_host"
+
+<http-other>                ::= <urilen-keyword>
+<urilen-keyword>            ::= "urilen" <whitespace>? ":" <whitespace>? <urilen-spec> <urilen-opts>?
+<urilen-spec>               ::= <comparison-op>? <number> | <number> "<>" <number>
+<urilen-opts>               ::= "," <whitespace>? <urilen-buffer>
+<urilen-buffer>             ::= "norm" | "raw"
+
+; =============================================================================
+; HTTP/2 Keywords
+; =============================================================================
+; Keywords for inspecting HTTP/2 protocol traffic.
+
+<http2-keyword>             ::= <http2-frametype-keyword> | <http2-errorcode-keyword>
+                              | <http2-priority-keyword> | <http2-window-keyword>
+                              | <http2-size-update-keyword> | <http2-settings-keyword>
+                              | <http2-header-name-keyword>
+
+; http2.frametype - Matches HTTP/2 frame type within a transaction.
+; Example: http2.frametype:GOAWAY;
+<http2-frametype-keyword>   ::= "http2.frametype" <whitespace>? ":" <whitespace>? <http2-frame-type>
+<http2-frame-type>          ::= "DATA" | "HEADERS" | "PRIORITY" | "RST_STREAM" | "SETTINGS"
+                              | "PUSH_PROMISE" | "PING" | "GOAWAY" | "WINDOW_UPDATE"
+                              | "CONTINUATION" | <number>
+
+; http2.errorcode - Matches error code in GOAWAY or RST_STREAM frames.
+; Example: http2.errorcode:NO_ERROR;
+<http2-errorcode-keyword>   ::= "http2.errorcode" <whitespace>? ":" <whitespace>? <http2-error-code>
+<http2-error-code>          ::= "NO_ERROR" | "PROTOCOL_ERROR" | "INTERNAL_ERROR" | "FLOW_CONTROL_ERROR"
+                              | "SETTINGS_TIMEOUT" | "STREAM_CLOSED" | "FRAME_SIZE_ERROR"
+                              | "REFUSED_STREAM" | "CANCEL" | "COMPRESSION_ERROR"
+                              | "CONNECT_ERROR" | "ENHANCE_YOUR_CALM" | "INADEQUATE_SECURITY"
+                              | "HTTP_1_1_REQUIRED" | <number>
+
+; http2.priority - Matches priority field value in PRIORITY or HEADERS frames (8-bit).
+; Supports >, <, and range (x-y) operators.
+; Example: http2.priority:>100;
+<http2-priority-keyword>    ::= "http2.priority" <whitespace>? ":" <whitespace>? <http2-numeric-spec>
+
+; http2.window - Matches window field in WINDOWUPDATE frame (32-bit).
+; Supports >, <, and range operators.
+; Example: http2.window:<100000;
+<http2-window-keyword>      ::= "http2.window" <whitespace>? ":" <whitespace>? <http2-numeric-spec>
+
+; http2.size_update - Matches size of HTTP/2 Dynamic Headers Table (64-bit).
+; Supports >, <, and range operators.
+; Example: http2.size_update:>4096;
+<http2-size-update-keyword> ::= "http2.size_update" <whitespace>? ":" <whitespace>? <http2-numeric-spec>
+
+; http2.settings - Matches name and value of HTTP/2 setting from SETTINGS frame.
+; Example: http2.settings:SETTINGS_ENABLE_PUSH=0;
+<http2-settings-keyword>    ::= "http2.settings" <whitespace>? ":" <whitespace>? <http2-setting-spec>
+<http2-setting-spec>        ::= <http2-setting-name> <http2-setting-op> <number>
+<http2-setting-name>        ::= "SETTINGS_HEADER_TABLE_SIZE" | "SETTINGS_ENABLE_PUSH"
+                              | "SETTINGS_MAX_CONCURRENT_STREAMS" | "SETTINGS_INITIAL_WINDOW_SIZE"
+                              | "SETTINGS_MAX_FRAME_SIZE" | "SETTINGS_MAX_HEADER_LIST_SIZE"
+                              | <identifier>
+<http2-setting-op>          ::= "=" | ">" | "<" | ">=" | "<="
+
+; http2.header_name - Sticky buffer for HTTP/2 header name in HEADER/PUSH_PROMISE/CONTINUATION.
+; Supports fast_pattern and multiple buffer matching.
+; Example: http2.header_name; content:"agent";
+<http2-header-name-keyword> ::= "http2.header_name"
+
+<http2-numeric-spec>        ::= <comparison-op>? <number> | <number> "-" <number>
+
+; =============================================================================
+; File Keywords
+; =============================================================================
+
+<file-keyword>              ::= <filemagic-keyword> | <filemd5-keyword> | <filesha1-keyword>
+                              | <filesha256-keyword> | <filesize-keyword> | <filestore-keyword>
+                              | <filename-keyword> | <fileext-keyword>
+
+<filemagic-keyword>         ::= "filemagic" <whitespace>? ":" <whitespace>? <quoted-string>
+<filemd5-keyword>           ::= "filemd5" <whitespace>? ":" <whitespace>? <filemd5-spec>
+<filemd5-spec>              ::= <quoted-string> | "!" <quoted-string>
+<filesha1-keyword>          ::= "filesha1" <whitespace>? ":" <whitespace>? <filesha1-spec>
+<filesha1-spec>             ::= <quoted-string> | "!" <quoted-string>
+<filesha256-keyword>        ::= "filesha256" <whitespace>? ":" <whitespace>? <filesha256-spec>
+<filesha256-spec>           ::= <quoted-string> | "!" <quoted-string>
+<filesize-keyword>          ::= "filesize" <whitespace>? ":" <whitespace>? <filesize-spec>
+<filesize-spec>             ::= <comparison-op>? <number> | <number> "<>" <number>
+<filestore-keyword>         ::= "filestore" <whitespace>? ":" <whitespace>? <filestore-opts>?
+<filestore-opts>            ::= <filestore-direction> "," <filestore-action>
+<filestore-direction>       ::= "request" | "response" | "both"
+<filestore-action>          ::= "tag" | "flow"
+<filename-keyword>          ::= "filename" <whitespace>? ":" <whitespace>? <quoted-string>
+<fileext-keyword>           ::= "fileext" <whitespace>? ":" <whitespace>? <quoted-string>
+
+; =============================================================================
+; TLS Keywords
+; =============================================================================
+
+<tls-keyword>               ::= <tls-sticky-buffer> | <tls-other>
+
+<tls-sticky-buffer>         ::= "tls.cert_subject" | "tls.cert_issuer" | "tls.cert_serial"
+                              | "tls.cert_fingerprint" | "tls.sni" | "tls.certs"
+                              | "tls.version" | "tls.subject" | "tls.issuerdn"
+                              | "tls.cert_chain_len" | "tls.cert_notbefore" | "tls.cert_notafter"
+                              | "tls.random" | "tls.alpn" | "ja3.hash" | "ja3.string"
+                              | "ja3s.hash" | "ja3s.string"
+
+<tls-other>                 ::= <ssl-version-keyword> | <ssl-state-keyword>
+<ssl-version-keyword>       ::= "ssl_version" <whitespace>? ":" <whitespace>? <ssl-version-spec>
+<ssl-version-spec>          ::= <ssl-version> | "!" <ssl-version>
+<ssl-version>               ::= "sslv2" | "sslv3" | "tls1.0" | "tls1.1" | "tls1.2" | "tls1.3"
+<ssl-state-keyword>         ::= "ssl_state" <whitespace>? ":" <whitespace>? <ssl-state-spec>
+<ssl-state-spec>            ::= <ssl-state> | "!" <ssl-state> | <ssl-state-spec> "," <ssl-state-spec>
+<ssl-state>                 ::= "client_hello" | "server_hello" | "client_keyx" | "server_keyx" | "unknown"
+
+; =============================================================================
+; DNS Keywords
+; =============================================================================
+
+<dns-keyword>               ::= <dns-sticky-buffer> | <dns-other>
+
+<dns-sticky-buffer>         ::= "dns.query" | "dns.answer" | "dns.answer.name" | "dns.authority"
+                              | "dns.authority.name" | "dns.opcode" | "dns.rrtype"
+
+<dns-other>                 ::= <dns-opcode-keyword> | <dns-rrtype-keyword>
+<dns-opcode-keyword>        ::= "dns.opcode" <whitespace>? ":" <whitespace>? <number>
+<dns-rrtype-keyword>        ::= "dns.rrtype" <whitespace>? ":" <whitespace>? <dns-rrtype-value>
+<dns-rrtype-value>          ::= <number> | <dns-rrtype-name>
+<dns-rrtype-name>           ::= "A" | "AAAA" | "NS" | "MX" | "TXT" | "CNAME" | "SOA" | "PTR" | "SRV" | "ANY"
+
+; =============================================================================
+; mDNS Keywords (Multicast DNS)
+; =============================================================================
+; Sticky buffers for matching fields in Multicast DNS messages.
+; All mDNS keywords support Multiple Buffer Matching and are typically
+; followed by Payload Keywords like content.
+
+<mdns-keyword>              ::= <mdns-sticky-buffer>
+
+<mdns-sticky-buffer>        ::= "mdns.queries.rrname" | "mdns.answers.rrname"
+                              | "mdns.authorities.rrname" | "mdns.additionals.rrname"
+                              | "mdns.response.rrname"
+
+; =============================================================================
+; SSH Keywords
+; =============================================================================
+; Keywords for inspecting SSH (Secure Shell) protocol traffic.
+; All sticky buffers support Fast Pattern matching.
+
+<ssh-keyword>               ::= <ssh-sticky-buffer>
+
+<ssh-sticky-buffer>         ::= "ssh.proto" | "ssh.software"
+                              | "ssh.hassh" | "ssh.hassh.string"
+                              | "ssh.hassh.server" | "ssh.hassh.server.string"
+
+; =============================================================================
+; FTP Keywords
+; =============================================================================
+; Keywords for inspecting FTP and FTP-DATA protocol traffic.
+
+<ftp-keyword>               ::= <ftp-sticky-buffer> | <ftp-other>
+
+; FTP Sticky Buffers (support fast_pattern)
+; ftp.command - Matches FTP client request command names (USER, PASS, PORT, RETR, etc.)
+; Example: ftp.command; content:"PASS";
+;
+; ftp.command_data - Matches data associated with FTP command
+; Example: ftp.command_data; content:"anonymous";
+;
+; ftp.completion_code - Matches FTP completion code strings (226, 150, etc.)
+; Example: ftp.completion_code; content:"226";
+;
+; ftp.reply - Matches FTP reply string (exclude completion code in content)
+; Example: ftp.reply; content:"Please specify the password.";
+
+<ftp-sticky-buffer>         ::= "ftp.command" | "ftp.command_data" | "ftp.completion_code" | "ftp.reply"
+
+<ftp-other>                 ::= <ftpdata-command-keyword> | <ftpbounce-keyword>
+                              | <ftp-dynamic-port-keyword> | <ftp-mode-keyword>
+                              | <ftp-reply-received-keyword>
+
+; ftpdata_command - Filters based on FTP control channel command
+; Example: ftpdata_command:stor;
+<ftpdata-command-keyword>   ::= "ftpdata_command" <whitespace>? ":" <whitespace>? <ftpdata-cmd>
+<ftpdata-cmd>               ::= "retr" | "stor"
+
+; ftpbounce - Detects FTP bounce attacks
+<ftpbounce-keyword>         ::= "ftpbounce"
+
+; ftp.dynamic_port - Matches dynamic port negotiated via PORT/EPRT/PASV/EPSV
+; Supports specific port, range (x-y), and comparison operators
+; Example: ftp.dynamic_port:59914;
+<ftp-dynamic-port-keyword>  ::= "ftp.dynamic_port" <whitespace>? ":" <whitespace>? <ftp-port-spec>
+<ftp-port-spec>             ::= <comparison-op>? <number> | <number> "-" <number>
+
+; ftp.mode - Matches FTP session mode (active or passive)
+; Example: ftp.mode:active;
+<ftp-mode-keyword>          ::= "ftp.mode" <whitespace>? ":" <whitespace>? <ftp-mode-value>
+<ftp-mode-value>            ::= "active" | "passive"
+
+; ftp.reply_received - Matches whether FTP reply was received
+; Example: ftp.reply_received:yes;
+<ftp-reply-received-keyword>::= "ftp.reply_received" <whitespace>? ":" <whitespace>? <boolean-value>
+<boolean-value>             ::= "yes" | "on" | "true" | "1" | "no" | "off" | "false" | "0"
+
+; =============================================================================
+; SMTP Keywords
+; =============================================================================
+; Keywords for inspecting SMTP (Simple Mail Transfer Protocol) traffic.
+
+<smtp-keyword>              ::= <smtp-sticky-buffer>
+
+; SMTP Sticky Buffers (support fast_pattern)
+; smtp.helo - Matches HELO command parameter (per transaction)
+; Example: smtp.helo; content:"localhost";
+;
+; smtp.mail_from - Matches MAIL FROM command parameter
+; Example: smtp.mail_from; content:"spam";
+;
+; smtp.rcpt_to - Matches RCPT TO command parameters (multi buffer)
+; Example: smtp.rcpt_to; content:"sensitive@target";
+
+<smtp-sticky-buffer>        ::= "smtp.helo" | "smtp.mail_from" | "smtp.rcpt_to"
+
+; =============================================================================
+; DHCP Keywords
+; =============================================================================
+; Keywords for inspecting DHCP (Dynamic Host Configuration Protocol) traffic.
+; All use unsigned 64-bit integers with comparison operators.
+
+<dhcp-keyword>              ::= <dhcp-leasetime-keyword> | <dhcp-rebinding-keyword>
+                              | <dhcp-renewal-keyword>
+
+; dhcp.leasetime - Matches DHCP lease time
+; Example: dhcp.leasetime:<3;
+<dhcp-leasetime-keyword>    ::= "dhcp.leasetime" <whitespace>? ":" <whitespace>? <dhcp-time-spec>
+
+; dhcp.rebinding_time - Matches DHCP rebinding time
+; Example: dhcp.rebinding_time:>=2;
+<dhcp-rebinding-keyword>    ::= "dhcp.rebinding_time" <whitespace>? ":" <whitespace>? <dhcp-time-spec>
+
+; dhcp.renewal_time - Matches DHCP renewal time
+; Example: dhcp.renewal_time:3;
+<dhcp-renewal-keyword>      ::= "dhcp.renewal_time" <whitespace>? ":" <whitespace>? <dhcp-time-spec>
+
+<dhcp-time-spec>            ::= <comparison-op>? <number>
+
+; =============================================================================
+; SNMP Keywords
+; =============================================================================
+; Keywords for inspecting SNMP (Simple Network Management Protocol) traffic.
+
+<snmp-keyword>              ::= <snmp-version-keyword> | <snmp-community-keyword>
+                              | <snmp-usm-keyword> | <snmp-pdu-type-keyword>
+
+; snmp.version - Matches SNMP protocol version (integer)
+; Example: snmp.version:<3;
+<snmp-version-keyword>      ::= "snmp.version" <whitespace>? ":" <whitespace>? <comparison-op>? <number>
+
+; snmp.community - Sticky buffer for SNMP community strings (v1/v2c password)
+; Case-sensitive, supports fast_pattern
+; Example: snmp.community; content:"private";
+<snmp-community-keyword>    ::= "snmp.community"
+
+; snmp.usm - Sticky buffer for SNMPv3 User-based Security Model username
+; Case-sensitive, supports fast_pattern
+; Example: snmp.usm; content:"admin";
+<snmp-usm-keyword>          ::= "snmp.usm"
+
+; snmp.pdu_type - Matches SNMP PDU type (integer)
+; Common values: 0=GetRequest, 1=GetNextRequest, 2=Response
+; Example: snmp.pdu_type:2;
+<snmp-pdu-type-keyword>     ::= "snmp.pdu_type" <whitespace>? ":" <whitespace>? <number>
+
+; =============================================================================
+; WebSocket Keywords
+; =============================================================================
+; Keywords for inspecting WebSocket protocol traffic.
+
+<websocket-keyword>         ::= <websocket-payload-keyword> | <websocket-flags-keyword>
+                              | <websocket-mask-keyword> | <websocket-opcode-keyword>
+
+; websocket.payload - Sticky buffer on unmasked payload
+; Limited by suricata.yaml websocket.max-payload-size
+; Supports fast_pattern
+; Example: websocket.payload; content:"swordfish";
+<websocket-payload-keyword> ::= "websocket.payload"
+
+; websocket.flags - Matches WebSocket flags (8-bit, uses upper 4 bits)
+; Can use numeric value, bitmask, or string names (fin, comp) with ! for negation
+; Example: websocket.flags:fin,!comp;
+<websocket-flags-keyword>   ::= "websocket.flags" <whitespace>? ":" <whitespace>? <websocket-flags-spec>
+<websocket-flags-spec>      ::= <number> | "&" <hex-value> "=" <hex-value> | <websocket-flag-list>
+<websocket-flag-list>       ::= <websocket-flag> | <websocket-flag> "," <websocket-flag-list>
+<websocket-flag>            ::= "!"? <websocket-flag-name>
+<websocket-flag-name>       ::= "fin" | "comp"
+
+; websocket.mask - Matches WebSocket mask (32-bit big-endian)
+; Example: websocket.mask:>0;
+<websocket-mask-keyword>    ::= "websocket.mask" <whitespace>? ":" <whitespace>? <comparison-op>? <number>
+
+; websocket.opcode - Matches WebSocket opcode (8-bit, 16 relevant values)
+; Can use numeric or enumeration value
+; Example: websocket.opcode:ping;
+<websocket-opcode-keyword>  ::= "websocket.opcode" <whitespace>? ":" <whitespace>? <websocket-opcode-spec>
+<websocket-opcode-spec>     ::= <comparison-op>? <number> | <websocket-opcode-name>
+<websocket-opcode-name>     ::= "continuation" | "text" | "binary" | "close" | "ping" | "pong"
+
+; =============================================================================
+; IP Reputation Keywords
+; =============================================================================
+; Keywords for matching based on IP reputation data.
+; Compatible with IP-only rules (checked once per flow-direction).
+
+<iprep-keyword>             ::= <iprep-score-keyword> | <iprep-isset-keyword>
+
+; iprep - Matches IP reputation score
+; Syntax: iprep:<side>,<category>,<operator>,<score>
+;   side: any, src, dst, both
+;   category: short name of reputation category
+;   operator: <, <=, >, >=, =
+;   score: 0-127
+;
+; Example: iprep:dst,CnC,>,30;
+<iprep-score-keyword>       ::= "iprep" <whitespace>? ":" <whitespace>? <iprep-side> "," <iprep-category> "," <iprep-op> "," <iprep-score>
+<iprep-side>                ::= "any" | "src" | "dst" | "both"
+<iprep-category>            ::= <identifier>
+<iprep-op>                  ::= "<" | "<=" | ">" | ">=" | "="
+<iprep-score>               ::= <number>
+
+; iprep isset/isnotset - Tests reputation membership
+; Syntax: iprep:<side>,<category>,<isset|isnotset>
+;   isset: checks if IP is part of reputation set (equivalent to >=,0)
+;   isnotset: checks if IP is not part of set
+;
+; Example: iprep:src,known-bad-hosts,isset;
+<iprep-isset-keyword>       ::= "iprep" <whitespace>? ":" <whitespace>? <iprep-side> "," <iprep-category> "," <iprep-set-test>
+<iprep-set-test>            ::= "isset" | "isnotset"
+
+; =============================================================================
+; Frame Keywords
+; =============================================================================
+; Generic frame keyword for inspecting specific parts of protocol records.
+; Used with various protocol-specific frame types.
+
+<frame-keyword>             ::= "frame" <whitespace>? ":" <whitespace>? <frame-type>
+<frame-type>                ::= <ssh-frame-type> | <smtp-frame-type>
+
+; SSH frame types
+<ssh-frame-type>            ::= "ssh.record.hdr" | "ssh.record.data" | "ssh.record.pdu"
+
+; SMTP frame types
+; smtp.command_line - Single line from client to server (excluding DATA transfer)
+; smtp.response_line - Single line from server to client
+; smtp.data - Streaming buffer of DATA bytes from client to server
+; smtp.stream - Streaming buffer of entire TCP data for SMTP session
+<smtp-frame-type>           ::= "smtp.command_line" | "smtp.response_line" | "smtp.data" | "smtp.stream"
+
+; =============================================================================
+; Other Keywords
+; =============================================================================
+
+<other-keyword>             ::= <app-layer-protocol-keyword> | <lua-keyword> | <xbits-keyword>
+                              | <dataset-keyword> | <datarep-keyword> | <tag-keyword>
+                              | <config-keyword>
+
+<app-layer-protocol-keyword>::= "app-layer-protocol" <whitespace>? ":" <whitespace>? <app-layer-proto-spec>
+<app-layer-proto-spec>      ::= "!"? <application-protocol>
+
+<lua-keyword>               ::= "lua" <whitespace>? ":" <whitespace>? <lua-script>
+<lua-script>                ::= <unquoted-string>
+
+<xbits-keyword>             ::= "xbits" <whitespace>? ":" <whitespace>? <xbits-spec>
+<xbits-spec>                ::= <xbits-action> "," <xbits-name> "," <xbits-track> <xbits-expire>?
+<xbits-action>              ::= "set" | "isset" | "isnotset" | "unset" | "toggle"
+<xbits-name>                ::= <identifier>
+<xbits-track>               ::= "track" <whitespace> <xbits-track-by>
+<xbits-track-by>            ::= "ip_src" | "ip_dst" | "ip_pair"
+<xbits-expire>              ::= "," <whitespace>? "expire" <whitespace> <number>
+
+<dataset-keyword>           ::= "dataset" <whitespace>? ":" <whitespace>? <dataset-spec>
+<dataset-spec>              ::= <dataset-action> "," <dataset-name> <dataset-opts>?
+<dataset-action>            ::= "isset" | "isnotset" | "set" | "unset"
+<dataset-name>              ::= "name" <whitespace> <identifier>
+<dataset-opts>              ::= "," <whitespace>? <dataset-opt> | "," <whitespace>? <dataset-opt> <dataset-opts>
+<dataset-opt>               ::= "type" <whitespace> <dataset-type> | "load" <whitespace> <unquoted-string> | "save" <whitespace> <unquoted-string> | "state" <whitespace> <unquoted-string> | "memcap" <whitespace> <number> | "hashsize" <whitespace> <number>
+<dataset-type>              ::= "string" | "md5" | "sha256" | "ipv4" | "ipv6" | "ip"
+
+<datarep-keyword>           ::= "datarep" <whitespace>? ":" <whitespace>? <datarep-spec>
+<datarep-spec>              ::= <datarep-name> "," <datarep-op> "," <number> <datarep-opts>?
+<datarep-name>              ::= "name" <whitespace> <identifier>
+<datarep-op>                ::= ">" | "<" | "=" | ">=" | "<=" | "!="
+<datarep-opts>              ::= "," <whitespace>? "load" <whitespace> <unquoted-string> | "," <whitespace>? "type" <whitespace> <datarep-type>
+<datarep-type>              ::= "string" | "md5" | "sha256" | "ipv4" | "ipv6" | "ip"
+
+<tag-keyword>               ::= "tag" <whitespace>? ":" <whitespace>? <tag-spec>
+<tag-spec>                  ::= <tag-type> "," <tag-count> "," <tag-metric> "," <tag-direction>
+<tag-type>                  ::= "session" | "host"
+<tag-count>                 ::= <number>
+<tag-metric>                ::= "packets" | "bytes" | "seconds"
+<tag-direction>             ::= "src" | "dst"
+
+<config-keyword>            ::= "config" <whitespace>? ":" <whitespace>? <config-spec>
+<config-spec>               ::= <config-option>+
+<config-option>             ::= <identifier> <whitespace> <config-value>
+<config-value>              ::= <identifier> | <number>
+
+; =============================================================================
+; Primitive Types
+; =============================================================================
+
+<comparison-op>             ::= "<" | ">" | "=" | ">=" | "<=" | "!=" | "!"
+<whitespace>                ::= " " | "\t" | <whitespace> <whitespace>
+<quoted-string>             ::= "\"" <string-content> "\""
+<string-content>            ::= <string-char>*
+<string-char>               ::= <printable-char> | <escaped-char>
+<escaped-char>              ::= "\\" <any-char> | "\\;" | "\\\""
+<unquoted-string>           ::= <printable-char>+
+<identifier>                ::= <letter> <identifier-char>*
+<identifier-char>           ::= <letter> | <digit> | "_" | "-"
+<variable-name>             ::= <letter> <identifier-char>*
+<number>                    ::= <digit>+
+<signed-number>             ::= <number> | "-" <number> | "+" <number>
+<float-number>              ::= <number> "." <number> | <number>
+<hex-value>                 ::= "0x" <hex-digit>+
+<digit>                     ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+<hex-digit>                 ::= <digit> | "a" | "b" | "c" | "d" | "e" | "f" | "A" | "B" | "C" | "D" | "E" | "F"
+<letter>                    ::= "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m"
+                              | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z"
+                              | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M"
+                              | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
+<printable-char>            ::= <letter> | <digit> | <special-char> | " "
+<special-char>              ::= "!" | "#" | "$" | "%" | "&" | "'" | "(" | ")" | "*" | "+" | "," | "-" | "."
+                              | "/" | ":" | "<" | "=" | ">" | "?" | "@" | "[" | "]" | "^" | "_" | "`"
+                              | "{" | "|" | "}" | "~"
+<any-char>                  ::= <printable-char> | "\\" | "\"" | ";"
